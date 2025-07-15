@@ -1,0 +1,238 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "ab_sharedsharepointonline_59731"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      },
+      "shared_office365_1": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "ab_sharedoffice365_38400"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "When_an_item_is_created_or_modified": {
+          "recurrence": {
+            "interval": 1,
+            "frequency": "Minute"
+          },
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "metadata": {
+            "operationMetadataId": "0c2fd7ab-dd91-4804-8979-eb239e750c11"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetOnUpdatedItems",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://prodigygroupindia.sharepoint.com",
+              "table": "fae424a7-c41c-495a-ab66-e1c5cbbd7728"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "Get_changes_for_an_item_or_a_file_(properties_only)": {
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "713483b0-a021-4357-acb5-f6bde407a47c"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItemChanges",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://prodigygroupindia.sharepoint.com",
+              "table": "fae424a7-c41c-495a-ab66-e1c5cbbd7728",
+              "id": "@triggerOutputs()?['body/ID']",
+              "since": "@triggerOutputs()?['body/{TriggerWindowStartToken}']",
+              "includeDrafts": false
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Condition": {
+          "actions": {
+            "Condition_2": {
+              "actions": {
+                "Compose": {
+                  "runAfter": {},
+                  "metadata": {
+                    "operationMetadataId": "db95b29e-19f4-4e79-9f74-959290e65afa"
+                  },
+                  "type": "Compose",
+                  "inputs": "@concat(\r\n    if(empty(outputs('Get_item')?['body/field_5']), '', concat('<tr><td>Candidate Name</td><td>', outputs('Get_item')?['body/field_5'], '</td></tr>')),\r\n    if(empty(outputs('Get_item')?['body/field_15/Value']), '', concat('<tr><td>Round 1 Status</td><td>', outputs('Get_item')?['body/field_15/Value'], '</td></tr>')),\r\n    if(empty(outputs('Get_item')?['body/field_16']), '', concat('<tr><td>Round 1 Comments</td><td>', outputs('Get_item')?['body/field_16'], '</td></tr>')),\r\n    if(empty(outputs('Get_item')?['body/field_19/Value']), '', concat('<tr><td>Round 2 Status</td><td>', outputs('Get_item')?['body/field_19/Value'], '</td></tr>')),\r\n    if(empty(outputs('Get_item')?['body/field_20']), '', concat('<tr><td>Round 2 Comments</td><td>', outputs('Get_item')?['body/field_20'], '</td></tr>')),\r\n    if(empty(outputs('Get_item')?['body/field_23/Value']), '', concat('<tr><td>Client Round Status</td><td>', outputs('Get_item')?['body/field_23/Value'], '</td></tr>'))\r\n)\r\n"
+                },
+                "Send_an_email_(V2)": {
+                  "runAfter": {
+                    "Compose": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "0b2991be-711e-48a1-83b0-b7b78f44267c"
+                  },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_office365_1",
+                      "operationId": "SendEmailV2",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                    },
+                    "parameters": {
+                      "emailMessage/To": "@outputs('Get_item')?['body/ConsultancyMail']",
+                      "emailMessage/Subject": "Candidate Status Update",
+                      "emailMessage/Body": "<!DOCTYPE html>\n<html>\n<head>\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            background-color: #f4f4f4;\n            padding: 20px;\n            margin: 0;\n        }\n        .container {\n            width: 80%;\n            margin: 0 auto;\n            background-color: #ffffff;\n            padding: 20px;\n            border-radius: 8px;\n            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2);\n        }\n        .header {\n            text-align: center;\n            padding: 20px;\n            background-color: #0056b3;\n            color: white;\n            font-size: 22px;\n            font-weight: bold;\n            border-top-left-radius: 8px;\n            border-top-right-radius: 8px;\n        }\n        .logo {\n            display: block;\n            margin: 0 auto;\n            width: 150px; /* Adjust size as needed */\n            height: auto;\n            margin-bottom: 10px;\n        }\n        .content {\n            padding: 20px;\n            text-align: left;\n        }\n        table {\n            width: 100%;\n            border-collapse: collapse;\n            margin-top: 20px;\n            font-size: 14px;\n        }\n        th, td {\n            border: 1px solid #ddd;\n            padding: 12px;\n            text-align: left;\n        }\n        th {\n            background-color: #007bff;\n            color: white;\n            font-weight: bold;\n            text-align: center;\n        }\n        tr:nth-child(even) {\n            background-color: #f9f9f9;\n        }\n        tr:hover {\n            background-color: #f1f1f1;\n        }\n        .footer {\n            text-align: center;\n            padding: 10px;\n            font-size: 14px;\n            color: #555;\n            border-top: 1px solid #ddd;\n            margin-top: 20px;\n        }\n        .disclaimer {\n            font-size: 12px;\n            color: #777;\n            text-align: center;\n            margin-top: 15px;\n            border-top: 1px solid #ddd;\n            padding-top: 10px;\n        }\n        /* Status Column Colors */\n        td.status-shortlisted {\n            background-color: #d4edda !important; /* Light Green */\n            color: #155724 !important;\n            font-weight: bold;\n        }\n        td.status-rejected {\n            background-color: #f8d7da !important; /* Light Red */\n            color: #721c24 !important;\n            font-weight: bold;\n        }\n    </style>\n</head>\n<body>\n\n    <div class=\"container\">\n        <img src=\"https://prodigygroupindia.com/wp-content/uploads/2022/08/MicrosoftTeams-image-300x109.png\" alt=\"prodigy-logo\" border=\"0\">\n\n       <div class=\"header\">\n    Candidate Status Update – Prodigy\n</div>\n\n<div class=\"content\">\n    <p>Dear Team,</p>\n    <p>Please find below the latest candidate status updates:</p>\n\n    <p><b>Candidate Name – @{outputs('Get_item')?['body/field_5']}</b></p>\n\n    <table>\n        <tr>\n            <th>ROUND</th>\n            <th>CURRENT STATUS / COMMENTS</th>\n        </tr>\n\n        @{if(empty(outputs('Get_item')?['body/field_15/Value']), '', concat('<tr><td>Round 1</td><td class=\"', if(equals(outputs('Get_item')?['body/field_15/Value'], 'Shortlisted'), 'status-shortlisted', 'status-rejected'), '\">', outputs('Get_item')?['body/field_15/Value'], '</td></tr>'))}   \n\n        @{if(empty(outputs('Get_item')?['body/field_16']), '', concat('<tr><td>Round 1 Comments</td><td>', outputs('Get_item')?['body/field_16'], '</td></tr>'))}\n\n        @{if(empty(outputs('Get_item')?['body/field_19/Value']), '', concat('<tr><td>Round 2</td><td class=\"', if(equals(outputs('Get_item')?['body/field_19/Value'], 'Shortlisted'), 'status-shortlisted', 'status-rejected'), '\">', outputs('Get_item')?['body/field_19/Value'], '</td></tr>'))}\n\n        @{if(empty(outputs('Get_item')?['body/field_20']), '', concat('<tr><td>Round 2 Comments</td><td>', outputs('Get_item')?['body/field_20'], '</td></tr>'))}\n\n       @{if(empty(outputs('Get_item')?['body/Round3Status/Value']), '', concat('<tr><td>Round 3</td><td class=\"', if(equals(outputs('Get_item')?['body/Round3Status/Value'], 'Shortlisted'), 'status-shortlisted', 'status-rejected'), '\">', outputs('Get_item')?['body/Round3Status/Value'], '</td></tr>'))\r\n}\n       \n       @{if(empty(outputs('Get_item')?['body/Round3Comments']), '', concat('<tr><td>Round 3 Comments</td><td>', outputs('Get_item')?['body/Round3Comments'], '</td></tr>'))} \n      \n       @{if(empty(outputs('Get_item')?['body/field_23/Value']), '', concat('<tr><td>Client Round</td><td class=\"', if(equals(outputs('Get_item')?['body/field_23/Value'], 'Shortlisted'), 'status-shortlisted', 'status-rejected'), '\">', outputs('Get_item')?['body/field_23/Value'], '</td></tr>'))}\n\n       @{if(empty(outputs('Get_item')?['body/ClientRoundComments']), '', concat('<tr><td>Client Round Comments</td><td>', outputs('Get_item')?['body/ClientRoundComments'], '</td></tr>'))}\n\n\n    </table>\n\n    <p>For any queries, please reach out to the Prodigy HR team.</p>\n</div>\n\n<p>Best Regards,</p>\n<p><b>Prodigy HR Team</b><br>\n<i>Talent Acquisition | Prodigy Systems and Services Pvt. Ltd.</i></p>\n\n<div class=\"disclaimer\">\n    This is an automated email from the <b>Prodigy HR System</b>. Please do not reply directly to this email.\n</div>\n",
+                      "emailMessage/From": "aisha@prodigygroupindia.com",
+                      "emailMessage/Cc": "akshithb@prodigygroupindia.com;manjeera.kommaraju@prodigygroupindia.com;pallavib@prodigygroupindia.com",
+                      "emailMessage/Importance": "Normal"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                }
+              },
+              "runAfter": {},
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@outputs('Get_item')?['body/SendStatusMAIL/Value']",
+                      "YES"
+                    ]
+                  },
+                  {
+                    "or": [
+                      {
+                        "equals": [
+                          "@outputs('Get_item')?['body/field_15/Value']",
+                          "Shortlisted"
+                        ]
+                      },
+                      {
+                        "equals": [
+                          "@outputs('Get_item')?['body/field_19/Value']",
+                          "Shortlisted"
+                        ]
+                      },
+                      {
+                        "equals": [
+                          "@outputs('Get_item')?['body/field_23/Value']",
+                          "Shortlisted"
+                        ]
+                      },
+                      {
+                        "equals": [
+                          "@outputs('Get_item')?['body/field_15/Value']",
+                          "Rejected"
+                        ]
+                      },
+                      {
+                        "equals": [
+                          "@outputs('Get_item')?['body/field_19/Value']",
+                          "Rejected"
+                        ]
+                      },
+                      {
+                        "equals": [
+                          "@outputs('Get_item')?['body/field_23/Value']",
+                          "Rejected"
+                        ]
+                      },
+                      {
+                        "equals": [
+                          "@outputs('Get_item')?['body/Round3Status/Value']",
+                          "Shortlisted"
+                        ]
+                      },
+                      {
+                        "equals": [
+                          "@outputs('Get_item')?['body/Round3Status/Value']",
+                          "Rejected"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "099fb0fe-bcaf-4d67-b42f-41a5168db41d"
+              },
+              "type": "If"
+            }
+          },
+          "runAfter": {
+            "Get_item": [
+              "Succeeded"
+            ]
+          },
+          "expression": {
+            "equals": [
+              "@outputs('Get_changes_for_an_item_or_a_file_(properties_only)')?['body/ColumnHasChanged/SendStatusMAIL']",
+              true
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "110fb743-0a4b-47c8-9555-d448599cfeff"
+          },
+          "type": "If"
+        },
+        "Get_item": {
+          "runAfter": {
+            "Get_changes_for_an_item_or_a_file_(properties_only)": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "284123b7-66ab-4534-8b42-2b0c620d486d"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://prodigygroupindia.sharepoint.com",
+              "table": "fae424a7-c41c-495a-ab66-e1c5cbbd7728",
+              "id": "@triggerOutputs()?['body/ID']"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      }
+    },
+    "templateName": ""
+  },
+  "schemaVersion": "1.0.0.0"
+}

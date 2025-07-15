@@ -1,0 +1,966 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_sharepointonline": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "ab_sharedsharepointonline_59731"
+        },
+        "api": {
+          "name": "shared_sharepointonline"
+        }
+      },
+      "shared_teams": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "ab_sharedteams_ee1c1"
+        },
+        "api": {
+          "name": "shared_teams"
+        }
+      },
+      "shared_office365": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "ab_sharedoffice365_38400"
+        },
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_office365users": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "ab_sharedoffice365users_d26b7"
+        },
+        "api": {
+          "name": "shared_office365users"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "When_an_item_is_created_or_modified": {
+          "recurrence": {
+            "interval": 1,
+            "frequency": "Minute"
+          },
+          "splitOn": "@triggerOutputs()?['body/value']",
+          "metadata": {
+            "operationMetadataId": "f68d0c52-6b8c-4cdb-903d-354499729e33"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetOnUpdatedItems",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://prodigygroupindia.sharepoint.com",
+              "table": "fae424a7-c41c-495a-ab66-e1c5cbbd7728"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "Get_changes_for_an_item_or_a_file_(properties_only)": {
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "c956ce98-e462-4b56-82d1-1c05bc0e741d"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItemChanges",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://prodigygroupindia.sharepoint.com",
+              "table": "fae424a7-c41c-495a-ab66-e1c5cbbd7728",
+              "id": "@triggerOutputs()?['body/ID']",
+              "since": "@triggerOutputs()?['body/{TriggerWindowStartToken}']",
+              "includeDrafts": false
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Get_item": {
+          "runAfter": {
+            "Get_changes_for_an_item_or_a_file_(properties_only)": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "05880052-1410-40d7-9f9e-ee655f35b0bf"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://prodigygroupindia.sharepoint.com",
+              "table": "fae424a7-c41c-495a-ab66-e1c5cbbd7728",
+              "id": "@triggerOutputs()?['body/ID']"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Condition": {
+          "actions": {
+            "Condition_2": {
+              "actions": {
+                "Create_a_Teams_meeting": {
+                  "runAfter": {
+                    "Compose": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "8f5f258c-c442-4807-b33c-2e2c2f4e49a2"
+                  },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_teams",
+                      "operationId": "CreateTeamsMeeting",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_teams"
+                    },
+                    "parameters": {
+                      "calendarid": "Calendar",
+                      "item/subject": "Interview Update for @{outputs('Get_item')?['body/field_5']}",
+                      "item/body/content": "Round 1 for @{outputs('Get_item')?['body/field_5']} on@{outputs('Get_item')?['body/field_13']} by @{outputs('ComposeFinalNames')}  \n",
+                      "item/timeZone": "UTC",
+                      "item/start/dateTime": "@formatDateTime(addMinutes(addHours(outputs('Convert_time_zone')?['body'], -24), 30), 'yyyy-MM-ddTHH:mm:ssZ')\r\n\r\n\r\n\r\n",
+                      "item/end/dateTime": "@formatDateTime(addHours(addHours(outputs('Convert_time_zone')?['body'], -24), 1), 'yyyy-MM-ddTHH:mm:ssZ')\r\n",
+                      "item/requiredAttendees": "pallavib@prodigygroupindia.com ; @{outputs('ComposeFinalMails')}",
+                      "item/optionalAttendees": "akshithb@prodigygroupindia.com;manjeera.kommaraju@prodigygroupindia.com;pallavib@prodigygroupindia.com"
+                    },
+                    "authentication": "@parameters('$authentication')",
+                    "retryPolicy": {
+                      "type": "fixed",
+                      "count": 10,
+                      "interval": "PT10S"
+                    }
+                  }
+                },
+                "Convert_time_zone_2": {
+                  "runAfter": {
+                    "Create_a_Teams_meeting": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "1d64b30d-da9c-4a3b-ab36-df3d6b4c9459"
+                  },
+                  "type": "Expression",
+                  "kind": "ConvertTimeZone",
+                  "inputs": {
+                    "baseTime": "@outputs('Get_item')?['body/field_13']",
+                    "formatString": "MMMM dd, yyyy - hh:mm tt 'IST'",
+                    "sourceTimeZone": "Pacific Standard Time",
+                    "destinationTimeZone": "US Mountain Standard Time"
+                  }
+                },
+                "Compose": {
+                  "runAfter": {
+                    "Convert_time_zone": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "6984fecc-a246-4596-819f-cedc50602f2a"
+                  },
+                  "type": "Compose",
+                  "inputs": "@convertTimeZone(outputs('Get_item')?['body/field_13'], 'UTC', 'India Standard Time', 'yyyy-MM-ddTHH:mm:ssZ')\r\n"
+                },
+                "Convert_time_zone": {
+                  "runAfter": {
+                    "ComposeFinalNames": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "70801c4a-1ffe-47f5-a618-0eecc1523384"
+                  },
+                  "type": "Expression",
+                  "kind": "ConvertTimeZone",
+                  "inputs": {
+                    "baseTime": "@{convertTimeZone(outputs('Get_item')?['body/field_13'], 'UTC', 'India Standard Time', 'yyyy-MM-ddTHH:mm:ssZ')\r\n}",
+                    "formatString": "yyyy-MM-ddTHH:mm:ssZ",
+                    "sourceTimeZone": "UTC",
+                    "destinationTimeZone": "India Standard Time"
+                  }
+                },
+                "Apply_to_each": {
+                  "foreach": "@body('Get_attachments')",
+                  "actions": {
+                    "Send_an_email_(V2)": {
+                      "runAfter": {},
+                      "metadata": {
+                        "operationMetadataId": "5a3c79fd-47c9-4cdb-be89-fe44c84ff2be"
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "connectionName": "shared_office365",
+                          "operationId": "SendEmailV2",
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                        },
+                        "parameters": {
+                          "emailMessage/To": "@{outputs('ComposeFinalMails')} ; @{outputs('Get_item')?['body/ConsultancyMail']} ; @{outputs('Get_item')?['body/CandidateMail']}",
+                          "emailMessage/Subject": "Interview Update",
+                          "emailMessage/Body": " <img src=\"https://prodigygroupindia.com/wp-content/uploads/2022/08/MicrosoftTeams-image-300x109.png\" alt=\"prodigy-logo\" border=\"0\">\n\n<p>Dear @{outputs('Get_item')?['body/field_5']},</p>\n\n<p>We are pleased to invite you for Round 1 of the interview. Below are the meeting details:</p>\n\n<hr>\n\n<h3>📅 Interview Details:</h3>\n<table border=\"1\" cellspacing=\"0\" cellpadding=\"5\" style=\"border-collapse: collapse; width: 100%;\">\n    <tr>\n        <td><strong>📅 Date & Time:</strong></td>\n        <td>@{body('Convert_time_zone_2')}</td>\n    </tr>\n    <tr>\n        <td><strong>⏳ Duration:</strong></td>\n        <td>30 minutes</td>\n    </tr>\n    <tr>\n        <td><strong>👤 Interviewer(s):</strong></td>\n        <td>@{outputs('ComposeFinalNames')}</td>\n    </tr>\n    <tr>\n        <td><strong>🔗 Meeting Link:</strong></td>\n        <td><a href=\"@{outputs('Create_a_Teams_meeting')?['body/onlineMeeting/joinUrl']}\">Click here to join</a></td>\n    </tr>\n    <tr>\n        <td><strong>📍 Location:</strong></td>\n        <td>Microsoft Teams (Virtual)</td>\n    </tr>\n</table>\n\n<hr>\n\n<h3>📌 Instructions:</h3>\n<ul>\n    <li>Ensure you have a stable internet connection.</li>\n    <li>Use headphones for better audio clarity.</li>\n    <li>Join the meeting at least 5 minutes before the scheduled time.</li>\n</ul>\n\n<h3>📩 Meeting Details:</h3>\n<p>@{outputs('Create_a_Teams_meeting')?['body/bodyPreview']}</p>\n\n<p>We look forward to speaking with you!</p>\n\n<p>Best Regards,<br>\n<strong>Recruitment Team</strong><br>\nProdigy HR Team</p>\n\n\n\n\n",
+                          "emailMessage/From": "aisha@prodigygroupindia.com",
+                          "emailMessage/Cc": "pallavib@prodigygroupindia.com;manjeera.kommaraju@prodigygroupindia.com",
+                          "emailMessage/Attachments": [
+                            {
+                              "Name": "@item()?['DisplayName']",
+                              "ContentBytes": "@body('Get_attachment_content')"
+                            }
+                          ],
+                          "emailMessage/Importance": "Normal"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "Convert_time_zone_2": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "7ebe955f-0255-4115-8691-fd77d61af4ed"
+                  },
+                  "type": "Foreach"
+                },
+                "Compose_varEmails": {
+                  "runAfter": {
+                    "Apply_to_each_5": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "b04e5dc8-7ecf-4ac9-bcab-78c77808acb6"
+                  },
+                  "type": "Compose",
+                  "inputs": "@variables('varEmails')"
+                },
+                "Apply_to_each_5": {
+                  "foreach": "@outputs('Get_item')?['body/InterviewerName0']",
+                  "actions": {
+                    "Get_user_profile_(V2)_2": {
+                      "runAfter": {},
+                      "metadata": {
+                        "operationMetadataId": "a5a0ec7c-4bc1-4216-a3fc-e97be8816bd2"
+                      },
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "connectionName": "shared_office365users",
+                          "operationId": "UserProfile_V2",
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365users"
+                        },
+                        "parameters": {
+                          "id": "@item()?['Email']"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "Append_to_array_variable": {
+                      "runAfter": {
+                        "Get_user_profile_(V2)_2": [
+                          "Succeeded"
+                        ]
+                      },
+                      "metadata": {
+                        "operationMetadataId": "1b19c0db-c794-4702-a0d2-5c3827a604d7"
+                      },
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varEmails",
+                        "value": "@outputs('Get_user_profile_(V2)_2')?['body/mail']"
+                      }
+                    },
+                    "Append_to_array_variable_2": {
+                      "runAfter": {
+                        "Append_to_array_variable": [
+                          "Succeeded"
+                        ]
+                      },
+                      "metadata": {
+                        "operationMetadataId": "555056ac-4862-498d-a5c0-73c9e84f5f02"
+                      },
+                      "type": "AppendToArrayVariable",
+                      "inputs": {
+                        "name": "varNames",
+                        "value": "@outputs('Get_user_profile_(V2)_2')?['body/displayName']"
+                      }
+                    }
+                  },
+                  "runAfter": {},
+                  "metadata": {
+                    "operationMetadataId": "9ec9b613-f090-4a59-a86a-e17b56ba2976"
+                  },
+                  "type": "Foreach"
+                },
+                "ComposeFinalMails": {
+                  "runAfter": {
+                    "Compose_varEmails": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "0926f659-950e-4fed-ab6e-9a7d5f92480d"
+                  },
+                  "type": "Compose",
+                  "inputs": "@join(outputs('Compose_varEmails'), ';')\r\n"
+                },
+                "Compose_varNames": {
+                  "runAfter": {
+                    "ComposeFinalMails": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "c199e038-0e02-44e7-9dfa-c390a74c83fb"
+                  },
+                  "type": "Compose",
+                  "inputs": "@variables('varNames')"
+                },
+                "ComposeFinalNames": {
+                  "runAfter": {
+                    "Compose_varNames": [
+                      "Succeeded"
+                    ]
+                  },
+                  "metadata": {
+                    "operationMetadataId": "168efc85-1183-4f13-8e08-c6c781a63ec8"
+                  },
+                  "type": "Compose",
+                  "inputs": "@join(outputs('Compose_varNames'), ', ')\r\n"
+                }
+              },
+              "runAfter": {},
+              "else": {
+                "actions": {
+                  "Condition_3": {
+                    "actions": {
+                      "Create_a_Teams_meeting_2": {
+                        "runAfter": {
+                          "Convert_time_zone_3": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "24b2450a-9acc-4c25-9657-de16a1ed0e12"
+                        },
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "host": {
+                            "connectionName": "shared_teams",
+                            "operationId": "CreateTeamsMeeting",
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_teams"
+                          },
+                          "parameters": {
+                            "calendarid": "Calendar",
+                            "item/subject": "Interview Update for @{outputs('Get_item')?['body/field_5']}",
+                            "item/body/content": "Round 2 for @{outputs('Get_item')?['body/field_5']} on @{outputs('Get_item')?['body/field_18']} by @{outputs('ComposeFinalNames2')}  \n",
+                            "item/timeZone": "UTC",
+                            "item/start/dateTime": "@formatDateTime(addMinutes(addHours(outputs('Convert_time_zone_3')?['body'], -24), 30), 'yyyy-MM-ddTHH:mm:ssZ')",
+                            "item/end/dateTime": "@formatDateTime(addHours(addHours(outputs('Convert_time_zone_3')?['body'], -24), 1), 'yyyy-MM-ddTHH:mm:ssZ')",
+                            "item/requiredAttendees": "pallavib@prodigygroupindia.com ; @{outputs('ComposeFinalMails2')}",
+                            "item/optionalAttendees": "akshithb@prodigygroupindia.com;pallavib@prodigygroupindia.com;manjeera.kommaraju@prodigygroupindia.com"
+                          },
+                          "authentication": "@parameters('$authentication')",
+                          "retryPolicy": {
+                            "type": "fixed",
+                            "count": 5,
+                            "interval": "PT10S"
+                          }
+                        }
+                      },
+                      "Convert_time_zone_4": {
+                        "runAfter": {
+                          "Create_a_Teams_meeting_2": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "33dcac94-4e87-4cf1-9457-c0c13cab53ee"
+                        },
+                        "type": "Expression",
+                        "kind": "ConvertTimeZone",
+                        "inputs": {
+                          "baseTime": "@outputs('Get_item')?['body/field_18']",
+                          "formatString": "MMMM dd, yyyy - hh:mm tt 'IST'",
+                          "sourceTimeZone": "Pacific Standard Time",
+                          "destinationTimeZone": "US Mountain Standard Time"
+                        }
+                      },
+                      "Convert_time_zone_3": {
+                        "runAfter": {
+                          "ComposeFinalNames2": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "1853d608-1347-47fc-bcf8-cc0c915217fe"
+                        },
+                        "type": "Expression",
+                        "kind": "ConvertTimeZone",
+                        "inputs": {
+                          "baseTime": "@{convertTimeZone(outputs('Get_item')?['body/field_18'], 'UTC', 'India Standard Time', 'yyyy-MM-ddTHH:mm:ssZ')\r\n}\n",
+                          "formatString": "yyyy-MM-ddTHH:mm:ssZ",
+                          "sourceTimeZone": "UTC",
+                          "destinationTimeZone": "India Standard Time"
+                        }
+                      },
+                      "Apply_to_each_2": {
+                        "foreach": "@body('Get_attachments')",
+                        "actions": {
+                          "Send_an_email_(V2)_2": {
+                            "runAfter": {},
+                            "metadata": {
+                              "operationMetadataId": "9dd1fb11-5d04-4b3c-9dc3-4c09e63c29b8"
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "host": {
+                                "connectionName": "shared_office365",
+                                "operationId": "SendEmailV2",
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                              },
+                              "parameters": {
+                                "emailMessage/To": " @{outputs('ComposeFinalMails2')} ; @{outputs('Get_item')?['body/ConsultancyMail']} ; @{outputs('Get_item')?['body/CandidateMail']}",
+                                "emailMessage/Subject": "Interview Update ",
+                                "emailMessage/Body": " <img src=\"https://prodigygroupindia.com/wp-content/uploads/2022/08/MicrosoftTeams-image-300x109.png\" alt=\"prodigy-logo\" border=\"0\">\n\n<p>Dear @{outputs('Get_item')?['body/field_5']},</p>\n\n<p>We are pleased to invite you for Round 2 of the interview. Below are the meeting details:</p>\n\n<hr>\n\n<h3>📅 Interview Details:</h3>\n<table border=\"1\" cellspacing=\"0\" cellpadding=\"5\" style=\"border-collapse: collapse; width: 100%;\">\n   <tr>\n       <td><strong>📅 Date & Time:</strong></td>\n       <td>@{body('Convert_time_zone_4')}</td>\n   </tr>\n   <tr>\n       <td><strong>⏳ Duration:</strong></td>\n       <td>30 minutes</td>\n   </tr>\n   <tr>\n       <td><strong>👤 Interviewer(s):</strong></td>\n       <td>@{outputs('ComposeFinalNames2')}</td>\n   </tr>\n   <tr>\n       <td><strong>🔗 Meeting Link:</strong></td>\n       <td><a href=\"@{outputs('Create_a_Teams_meeting_2')?['body/onlineMeeting/joinUrl']}\">Click here to join</a></td>\n   </tr>\n   <tr>\n       <td><strong>📍 Location:</strong></td>\n       <td>Microsoft Teams (Virtual)</td>\n   </tr>\n</table>\n\n<hr>\n\n<h3>📌 Instructions:</h3>\n<ul>\n   <li>Ensure you have a stable internet connection.</li>\n   <li>Use headphones for better audio clarity.</li>\n   <li>Join the meeting at least 5 minutes before the scheduled time.</li>\n</ul>\n\n<h3>📩 Meeting Details:</h3>\n<p>@{outputs('Create_a_Teams_meeting_2')?['body/bodyPreview']}</p>\n\n<p>We look forward to speaking with you!</p>\n\n<p>Best Regards,<br>\n<strong>Recruitment Team</strong><br>\nProdigy HR Team</p>\n\n\n\n\n",
+                                "emailMessage/From": "aisha@prodigygroupindia.com",
+                                "emailMessage/Cc": "pallavib@prodigygroupindia.com;manjeera.kommaraju@prodigygroupindia.com",
+                                "emailMessage/Attachments": [
+                                  {
+                                    "Name": "@item()?['DisplayName']",
+                                    "ContentBytes": "@body('Get_attachment_content')"
+                                  }
+                                ],
+                                "emailMessage/Importance": "Normal"
+                              },
+                              "authentication": "@parameters('$authentication')"
+                            }
+                          }
+                        },
+                        "runAfter": {
+                          "Convert_time_zone_4": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "ae752372-60d9-460d-b6a6-8fc89a60727d"
+                        },
+                        "type": "Foreach"
+                      },
+                      "Apply_to_each_3": {
+                        "foreach": "@triggerOutputs()?['body/InterviewerName']",
+                        "actions": {
+                          "Get_user_profile_(V2)_4": {
+                            "runAfter": {},
+                            "metadata": {
+                              "operationMetadataId": "017b12a4-ff3b-4cf8-b29b-f69cb2504d9d"
+                            },
+                            "type": "OpenApiConnection",
+                            "inputs": {
+                              "host": {
+                                "connectionName": "shared_office365users",
+                                "operationId": "UserProfile_V2",
+                                "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365users"
+                              },
+                              "parameters": {
+                                "id": "@item()?['Email']\r\n"
+                              },
+                              "authentication": "@parameters('$authentication')"
+                            }
+                          },
+                          "Append_to_array_variable_3": {
+                            "runAfter": {
+                              "Get_user_profile_(V2)_4": [
+                                "Succeeded"
+                              ]
+                            },
+                            "metadata": {
+                              "operationMetadataId": "3e3cdf2b-4ce7-4322-8019-14c8f846c272"
+                            },
+                            "type": "AppendToArrayVariable",
+                            "inputs": {
+                              "name": "varEmails",
+                              "value": "@outputs('Get_user_profile_(V2)_4')?['body/mail']"
+                            }
+                          },
+                          "Append_to_array_variable_4": {
+                            "runAfter": {
+                              "Append_to_array_variable_3": [
+                                "Succeeded"
+                              ]
+                            },
+                            "metadata": {
+                              "operationMetadataId": "b6579706-0cd6-469b-9f4a-c81c2c12fd77"
+                            },
+                            "type": "AppendToArrayVariable",
+                            "inputs": {
+                              "name": "varNames",
+                              "value": "@outputs('Get_user_profile_(V2)_4')?['body/displayName']"
+                            }
+                          }
+                        },
+                        "runAfter": {},
+                        "metadata": {
+                          "operationMetadataId": "7d012f2f-4e41-444d-8992-05bbe34b1fb6"
+                        },
+                        "type": "Foreach"
+                      },
+                      "Compose_varEmails2": {
+                        "runAfter": {
+                          "Apply_to_each_3": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "ffd2e70c-740d-46a0-a48b-dfb236477f79"
+                        },
+                        "type": "Compose",
+                        "inputs": "@variables('varEmails')"
+                      },
+                      "Compose_varNames2": {
+                        "runAfter": {
+                          "Compose_varEmails2": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "55fa29d6-10f4-45ad-a07e-490e535df9a4"
+                        },
+                        "type": "Compose",
+                        "inputs": "@variables('varNames')"
+                      },
+                      "ComposeFinalMails2": {
+                        "runAfter": {
+                          "Compose_varNames2": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "413ece24-92ae-448e-b760-30db761613cc"
+                        },
+                        "type": "Compose",
+                        "inputs": "@join(outputs('Compose_varEmails2'), ';')"
+                      },
+                      "ComposeFinalNames2": {
+                        "runAfter": {
+                          "ComposeFinalMails2": [
+                            "Succeeded"
+                          ]
+                        },
+                        "metadata": {
+                          "operationMetadataId": "91a3f0a1-1ebf-466a-b8b8-bb4a8b6bcdbb"
+                        },
+                        "type": "Compose",
+                        "inputs": "@join(outputs('Compose_varNames2'), ', ')"
+                      }
+                    },
+                    "runAfter": {},
+                    "else": {
+                      "actions": {
+                        "Condition_4": {
+                          "actions": {
+                            "Convert_time_zone-copy": {
+                              "runAfter": {
+                                "ComposeFinalNames3": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "70801c4a-1ffe-47f5-a618-0eecc1523384"
+                              },
+                              "type": "Expression",
+                              "kind": "ConvertTimeZone",
+                              "inputs": {
+                                "baseTime": "@convertTimeZone(outputs('Get_item')?['body/Round3Date'], 'UTC', 'India Standard Time', 'yyyy-MM-ddTHH:mm:ssZ')\r\n",
+                                "formatString": "yyyy-MM-ddTHH:mm:ssZ",
+                                "sourceTimeZone": "UTC",
+                                "destinationTimeZone": "India Standard Time"
+                              }
+                            },
+                            "Compose-copy": {
+                              "runAfter": {
+                                "Convert_time_zone-copy": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "6984fecc-a246-4596-819f-cedc50602f2a"
+                              },
+                              "type": "Compose",
+                              "inputs": "@convertTimeZone(outputs('Get_item')?['body/Round3Date'], 'UTC', 'India Standard Time', 'yyyy-MM-ddTHH:mm:ssZ')\r\n"
+                            },
+                            "Create_a_Teams_meeting-copy": {
+                              "runAfter": {
+                                "Compose-copy": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "8f5f258c-c442-4807-b33c-2e2c2f4e49a2"
+                              },
+                              "type": "OpenApiConnection",
+                              "inputs": {
+                                "host": {
+                                  "connectionName": "shared_teams",
+                                  "operationId": "CreateTeamsMeeting",
+                                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_teams"
+                                },
+                                "parameters": {
+                                  "calendarid": "Calendar",
+                                  "item/subject": "Interview Update for @{outputs('Get_item')?['body/field_5']}",
+                                  "item/body/content": "Round 3 for @{outputs('Get_item')?['body/field_5']} on @{outputs('Get_item')?['body/Round3Date']} by @{outputs('ComposeFinalNames3')}  \n",
+                                  "item/timeZone": "UTC",
+                                  "item/start/dateTime": "@formatDateTime(addMinutes(addHours(outputs('Convert_time_zone-copy')?['body'], -24), 30), 'yyyy-MM-ddTHH:mm:ssZ')\r\n\r\n\r\n\r\n",
+                                  "item/end/dateTime": "@formatDateTime(addHours(addHours(outputs('Convert_time_zone-copy')?['body'], -24), 1), 'yyyy-MM-ddTHH:mm:ssZ')\r\n",
+                                  "item/requiredAttendees": "pallavib@prodigygroupindia.com ; @{outputs('ComposeFinalMails3')}",
+                                  "item/optionalAttendees": "akshithb@prodigygroupindia.com;pallavib@prodigygroupindia.com;manjeera.kommaraju@prodigygroupindia.com"
+                                },
+                                "authentication": "@parameters('$authentication')"
+                              }
+                            },
+                            "Convert_time_zone_2-copy": {
+                              "runAfter": {
+                                "Create_a_Teams_meeting-copy": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "1d64b30d-da9c-4a3b-ab36-df3d6b4c9459"
+                              },
+                              "type": "Expression",
+                              "kind": "ConvertTimeZone",
+                              "inputs": {
+                                "baseTime": "@outputs('Get_item')?['body/Round3Date']",
+                                "formatString": "MMMM dd, yyyy - hh:mm tt 'IST'",
+                                "sourceTimeZone": "Pacific Standard Time",
+                                "destinationTimeZone": "US Mountain Standard Time"
+                              }
+                            },
+                            "Apply_to_each-copy": {
+                              "foreach": "@body('Get_attachments')",
+                              "actions": {
+                                "Send_an_email_(V2)_1": {
+                                  "runAfter": {},
+                                  "metadata": {
+                                    "operationMetadataId": "5a3c79fd-47c9-4cdb-be89-fe44c84ff2be"
+                                  },
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "host": {
+                                      "connectionName": "shared_office365",
+                                      "operationId": "SendEmailV2",
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                                    },
+                                    "parameters": {
+                                      "emailMessage/To": " @{outputs('ComposeFinalMails3')} ; @{outputs('Get_item')?['body/ConsultancyMail']} ; @{outputs('Get_item')?['body/CandidateMail']}",
+                                      "emailMessage/Subject": "Interview Update",
+                                      "emailMessage/Body": " <img src=\"https://prodigygroupindia.com/wp-content/uploads/2022/08/MicrosoftTeams-image-300x109.png\" alt=\"prodigy-logo\" border=\"0\">\n\n\n<p>Dear @{outputs('Get_item')?['body/field_5']},</p>\n\n<p>We are pleased to invite you for Round 3 of the interview. Below are the meeting details:</p>\n\n<hr>\n\n<h3>📅 Interview Details:</h3>\n<table border=\"1\" cellspacing=\"0\" cellpadding=\"5\" style=\"border-collapse: collapse; width: 100%;\">\n    <tbody><tr>\n        <td><strong>📅 Date &amp; Time:</strong></td>\n        <td>@{body('Convert_time_zone_2-copy')}</td>\n    </tr>\n    <tr>\n        <td><strong>⏳ Duration:</strong></td>\n        <td>30 minutes</td>\n    </tr>\n    <tr>\n        <td><strong>👤 Interviewer(s):</strong></td>\n        <td>@{outputs('ComposeFinalNames3')}</td>\n    </tr>\n    <tr>\n        <td><strong>🔗 Meeting Link:</strong></td>\n        <td><a href=\"@{outputs('Create_a_Teams_meeting-copy')?['body/onlineMeeting/joinUrl']}\">Click here to join</a></td>\n    </tr>\n    <tr>\n        <td><strong>📍 Location:</strong></td>\n        <td>Microsoft Teams (Virtual)</td>\n    </tr>\n</tbody></table>\n\n<hr>\n\n<h3>📌 Instructions:</h3>\n<ul>\n    <li>Ensure you have a stable internet connection.</li>\n    <li>Use headphones for better audio clarity.</li>\n    <li>Join the meeting at least 5 minutes before the scheduled time.</li>\n</ul>\n\n<h3>📩 Meeting Details:</h3>\n<p>@{outputs('Create_a_Teams_meeting-copy')?['body/bodyPreview']}</p>\n\n<p>We look forward to speaking with you!</p>\n\n<p>Best Regards,\n\n<strong>Recruitment Team</strong>\n\nProdigy HR Team</p>\n\n\n\n\n",
+                                      "emailMessage/From": "aisha@prodigygroupindia.com",
+                                      "emailMessage/Cc": "pallavib@prodigygroupindia.com;manjeera.kommaraju@prodigygroupindia.com",
+                                      "emailMessage/Attachments": [
+                                        {
+                                          "Name": "@item()?['DisplayName']",
+                                          "ContentBytes": "@body('Get_attachment_content')"
+                                        }
+                                      ],
+                                      "emailMessage/Importance": "Normal"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  }
+                                }
+                              },
+                              "runAfter": {
+                                "Convert_time_zone_2-copy": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "7ebe955f-0255-4115-8691-fd77d61af4ed"
+                              },
+                              "type": "Foreach"
+                            },
+                            "Apply_to_each_4": {
+                              "foreach": "@triggerOutputs()?['body/Round3Interviewer']",
+                              "actions": {
+                                "Get_user_profile_(V2)": {
+                                  "runAfter": {},
+                                  "metadata": {
+                                    "operationMetadataId": "3d242c1c-f1c8-4265-a93c-2f1b3443c6ca"
+                                  },
+                                  "type": "OpenApiConnection",
+                                  "inputs": {
+                                    "host": {
+                                      "connectionName": "shared_office365users",
+                                      "operationId": "UserProfile_V2",
+                                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365users"
+                                    },
+                                    "parameters": {
+                                      "id": "@item()?['Email']"
+                                    },
+                                    "authentication": "@parameters('$authentication')"
+                                  }
+                                },
+                                "Append_to_array_variable_5": {
+                                  "runAfter": {
+                                    "Get_user_profile_(V2)": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "metadata": {
+                                    "operationMetadataId": "ccd79404-e054-4864-b013-0ef22095c9c5"
+                                  },
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varEmails",
+                                    "value": "@outputs('Get_user_profile_(V2)')?['body/mail']"
+                                  }
+                                },
+                                "Append_to_array_variable_6": {
+                                  "runAfter": {
+                                    "Append_to_array_variable_5": [
+                                      "Succeeded"
+                                    ]
+                                  },
+                                  "metadata": {
+                                    "operationMetadataId": "954eec75-26c0-4176-904f-6527edbd4ba1"
+                                  },
+                                  "type": "AppendToArrayVariable",
+                                  "inputs": {
+                                    "name": "varNames",
+                                    "value": "@outputs('Get_user_profile_(V2)')?['body/displayName']"
+                                  }
+                                }
+                              },
+                              "runAfter": {},
+                              "metadata": {
+                                "operationMetadataId": "ea7faed9-9ac3-487c-a581-46b5a8643548"
+                              },
+                              "type": "Foreach"
+                            },
+                            "Compose_varEmails3": {
+                              "runAfter": {
+                                "Apply_to_each_4": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "c15d5d22-003b-4951-9106-1f731204b33f"
+                              },
+                              "type": "Compose",
+                              "inputs": "@variables('varEmails')"
+                            },
+                            "Compose_varNames3": {
+                              "runAfter": {
+                                "Compose_varEmails3": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "4c881ac6-2c5c-40e1-9d8d-1ac2941cfe97"
+                              },
+                              "type": "Compose",
+                              "inputs": "@variables('varNames')"
+                            },
+                            "ComposeFinalMails3": {
+                              "runAfter": {
+                                "Compose_varNames3": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "5093e049-d211-4e9b-b512-243bb1dfc884"
+                              },
+                              "type": "Compose",
+                              "inputs": "@join(outputs('Compose_varEmails3'), ';')"
+                            },
+                            "ComposeFinalNames3": {
+                              "runAfter": {
+                                "ComposeFinalMails3": [
+                                  "Succeeded"
+                                ]
+                              },
+                              "metadata": {
+                                "operationMetadataId": "8530b107-82bf-4d5c-97fc-17562b5e53b7"
+                              },
+                              "type": "Compose",
+                              "inputs": "@join(outputs('Compose_varNames3'), ', ')"
+                            }
+                          },
+                          "runAfter": {},
+                          "expression": {
+                            "equals": [
+                              "@outputs('Get_item')?['body/CreateTeamsInterview/Value']",
+                              "ROUND3"
+                            ]
+                          },
+                          "metadata": {
+                            "operationMetadataId": "9694865a-418e-41bc-a2ba-65dd291cf2ad"
+                          },
+                          "type": "If"
+                        }
+                      }
+                    },
+                    "expression": {
+                      "equals": [
+                        "@outputs('Get_item')?['body/CreateTeamsInterview/Value']",
+                        "ROUND2"
+                      ]
+                    },
+                    "metadata": {
+                      "operationMetadataId": "548f579a-8244-4c9d-a617-a1b010d8d49b"
+                    },
+                    "type": "If"
+                  }
+                }
+              },
+              "expression": {
+                "equals": [
+                  "@outputs('Get_item')?['body/CreateTeamsInterview/Value']",
+                  "ROUND1"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "b318ef70-1a6d-4329-a68d-969cf5239afa"
+              },
+              "type": "If"
+            }
+          },
+          "runAfter": {
+            "Initialize_variable_2": [
+              "Succeeded"
+            ]
+          },
+          "expression": {
+            "equals": [
+              "@outputs('Get_changes_for_an_item_or_a_file_(properties_only)')?['body/ColumnHasChanged/CreateTeamsInterview']",
+              true
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "f0783b46-5714-40cd-8e0e-5bde6dd2fa63"
+          },
+          "type": "If"
+        },
+        "Get_attachments": {
+          "runAfter": {
+            "Get_item": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "28b3eb74-fefd-47d6-b1d4-db5534184729"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetItemAttachments",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://prodigygroupindia.sharepoint.com",
+              "table": "fae424a7-c41c-495a-ab66-e1c5cbbd7728",
+              "itemId": "@triggerOutputs()?['body/ID']"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Get_attachment_content": {
+          "runAfter": {
+            "Get_attachments": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "4ab40f12-8f74-4988-908a-c2951d5f391c"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_sharepointonline",
+              "operationId": "GetAttachmentContent",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_sharepointonline"
+            },
+            "parameters": {
+              "dataset": "https://prodigygroupindia.sharepoint.com",
+              "table": "fae424a7-c41c-495a-ab66-e1c5cbbd7728",
+              "itemId": "@triggerOutputs()?['body/ID']",
+              "attachmentId": "@first(outputs('Get_attachments')?['body'])?['Id']\r\n"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        },
+        "Initialize_variable": {
+          "runAfter": {
+            "Get_attachment_content": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "928a5200-8c5d-401a-ac69-d2866d23351f"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varEmails",
+                "type": "array"
+              }
+            ]
+          }
+        },
+        "Initialize_variable_2": {
+          "runAfter": {
+            "Initialize_variable": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "67feb28e-00dd-456c-9e3e-7867de1bdf8a"
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "varNames",
+                "type": "array"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "templateName": ""
+  },
+  "schemaVersion": "1.0.0.0"
+}
